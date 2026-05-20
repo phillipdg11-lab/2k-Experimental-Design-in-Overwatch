@@ -1,0 +1,147 @@
+---
+title: "stats424final"
+author: "Phillip DeGroot"
+date: "2024-05-09"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+dat = read.csv("stat424final.csv", header = T)
+
+dat = dat[,-c(10,11,12)]
+colnames(dat) = c("Run","A","B","C","1","2","3","4","5")
+
+dat$y.bar <- apply(dat[, 5:9], 1, mean)
+dat
+```
+
+```{r}
+dat$A[dat$A == "-"] <- -1
+dat$A[dat$A == "+"] <- 1
+dat$A <- as.numeric(dat$A)
+
+dat$B[dat$B == "-"] <- -1
+dat$B[dat$B == "+"] <- 1
+dat$B <- as.numeric(dat$B)
+
+dat$C[dat$C == "-"] <- -1
+dat$C[dat$C == "+"] <- 1
+dat$C <- as.numeric(dat$C)
+
+dat
+```
+
+```{r}
+X = dat[, 2:4]
+
+X$AB <- X$A * X$B
+X$AC <- X$A * X$C
+X$BC <- X$B * X$C
+
+X$ABC <- X$A * X$B * X$C
+
+X
+
+y <- dat$y.bar
+
+y
+
+X.ful <- cbind(X, y)
+
+
+mod <- lm(y ~ -1 + ., data = X.ful)
+
+summary(mod)
+
+#anova(mod)
+
+beta.hats.1 <- summary(mod)$coefficients[, 1] * 2
+
+beta.hats.1
+
+X.mat <- as.matrix(X)
+y.mat <- as.matrix(y)
+
+beta.hats.2 <- solve(t(X.mat) %*% X.mat) %*% t(X.mat) %*% y.mat
+beta.hats.2 <- beta.hats.2 * 2
+
+beta.hats.2
+```
+```{r}
+dispersion = log(sqrt(abs(mod$coef)))
+dispersion
+```
+
+
+```{r}
+s.0 = 1.5 * median(abs(beta.hats.1))
+s.0
+
+PSE = 1.5 * median(abs(beta.hats.1[abs(beta.hats.1) < 2.5 * s.0]))
+PSE
+
+t.pse = beta.hats.1 / PSE
+
+ier.crit = 3.43 # IER at alpha = 0.01 and I = 15
+
+out.df <- data.frame(y.bar = abs(t.pse), reject = abs(t.pse) > ier.crit)
+out.df
+```
+
+```{r}
+location = data.frame(theta = abs(2*coef(mod)))
+location = location %>%
+  arrange(theta)%>%
+  mutate(pi = qnorm(.5 +
+                      .5 * (1:length(location$theta) - 0.5) /
+                      length(location$theta)))
+
+ggplot(location, aes(pi,theta)) +
+  geom_text(label = rownames(location)) +
+  ylab("Absolute Factorial Effects") +
+  xlab("half-Normal Quantiles")
+
+dispersion1 = data.frame(theta_1 = abs(2*dispersion))
+dispersion1 = dispersion1%>%
+  arrange(theta_1)%>%
+  mutate(pi_1 = qnorm(.5 +
+                      .5 * (1:length(dispersion1$theta_1) - 0.5) /
+                     length(dispersion1$theta_1)))
+
+ggplot(dispersion1, aes(pi_1,theta_1)) +
+  geom_text(label = rownames(dispersion1)) +
+  ylab("Absolute Factorial Effects") +
+  xlab("half-Normal Quantiles")
+```
+
+```{r}
+interaction.plot(
+  dat$A,
+  dat$B,
+  dat$y.bar,
+  trace.label = "A",
+  xlab = "B",
+  ylab = "Means of Total Damage and Healing Done"
+)
+
+interaction.plot(
+  dat$A,
+  dat$C,
+  dat$y.bar,
+  trace.label = "A",
+  xlab = "C",
+  ylab = "Means of Total Damage and Healing Done"
+)
+
+interaction.plot(
+  dat$B,
+  dat$C,
+  dat$y.bar,
+  trace.label = "B",
+  xlab = "C",
+  ylab = "Means of Total Damage and Healing Done"
+)
+```
+
+
